@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Flores amarillas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Young+Serif&display=swap" rel="stylesheet">
+<style>
+  :root {
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    --bg: #dbe8ee;
+    --ink: #17323a;
+    --muted: #4b6670;
+    --soil: #b9cdd6;
+    --stem: #3d7a3c;
+    --leaf: #5a9b48;
+    --leaf-vein: #3d7a3c;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0e2029;
+      --ink: #e9f2f5;
+      --muted: #93adb7;
+      --soil: #16323e;
+      --stem: #5fa354;
+      --leaf: #7dbb5f;
+      --leaf-vein: #4f8f47;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0e2029;
+    --ink: #e9f2f5;
+    --muted: #93adb7;
+    --soil: #16323e;
+    --stem: #5fa354;
+    --leaf: #7dbb5f;
+    --leaf-vein: #4f8f47;
+  }
+
+  *, *::before, *::after { box-sizing: inherit; }
+  html { height: 100%; scroll-padding-top: env(safe-area-inset-top, 0px); }
+  body {
+    height: 100%;
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+
+  main {
+    height: 100%;
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    justify-items: center;
+    padding: 22px 20px 20px;
+    gap: 10px;
+  }
+
+  h1 {
+    margin: 0;
+    max-width: 22ch;
+    font-family: "Young Serif", Georgia, "Times New Roman", serif;
+    font-weight: 400;
+    font-size: clamp(1.35rem, 4.2vw, 2.1rem);
+    line-height: 1.25;
+    text-align: center;
+  }
+
+  /* Toda la flor es el botón: cada toque agrega un pétalo */
+  .stage {
+    width: 100%;
+    min-height: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    display: flex;
+    justify-content: center;
+    align-items: stretch;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .stage:focus-visible { outline: 3px solid #f2b705; outline-offset: 4px; border-radius: 12px; }
+  svg {
+    height: 100%;
+    max-width: 100%;
+    width: auto;
+    aspect-ratio: 400 / 600;
+    overflow: visible;
+    pointer-events: none;
+  }
+
+  #caption {
+    margin: 0;
+    color: var(--muted);
+    font-size: 0.95rem;
+    min-height: 1.4em;
+    text-align: center;
+  }
+
+  .soil { fill: var(--soil); }
+  .stem { fill: none; stroke: var(--stem); stroke-width: 7; stroke-linecap: round;
+          stroke-dasharray: 1; stroke-dashoffset: 1;
+          animation: grow 1.1s cubic-bezier(.3,.7,.3,1) forwards; }
+  .leaf { fill: var(--leaf); }
+  .vein { fill: none; stroke: var(--leaf-vein); stroke-width: 1.6; stroke-linecap: round; }
+  .pop { transform-box: fill-box; animation: pop .6s cubic-bezier(.2,1.3,.4,1) both; }
+  .petal { transform-origin: 50% 100%; animation-duration: .5s; }
+  .leaf-wrap { transform-origin: 0% 50%; }
+  .disc { transform-origin: 50% 50%; }
+
+  @keyframes grow { to { stroke-dashoffset: 0; } }
+  @keyframes pop { from { transform: scale(0); } to { transform: scale(1); } }
+
+  @media (prefers-reduced-motion: reduce) {
+    .stem { animation: none; stroke-dashoffset: 0; }
+    .pop { animation: none; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <h1>Por si aún no te han entregado flores amarillas, ten estas muejejej</h1>
+
+  <button class="stage" id="stage" type="button" aria-label="Agregar un pétalo a la flor">
+    <svg id="flor" viewBox="0 0 400 600" role="img" aria-label="Una flor amarilla a la que le van saliendo pétalos"></svg>
+  </button>
+
+  <p id="caption" aria-live="polite"></p>
+</main>
+
+<script>
+(function () {
+  var NS = "http://www.w3.org/2000/svg";
+  var svg = document.getElementById("flor");
+  var stage = document.getElementById("stage");
+  var caption = document.getElementById("caption");
+
+  function rnd(a, b) { return a + Math.random() * (b - a); }
+  function f(n) { return n.toFixed(2); }
+  function el(name, attrs, parent) {
+    var e = document.createElementNS(NS, name);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    if (parent) parent.appendChild(e);
+    return e;
+  }
+  function petalPath(L, w) {
+    return "M0,0 C" + f(-w) + "," + f(-L * 0.3) + " " + f(-w * 0.9) + "," + f(-L * 0.86) +
+           " 0," + f(-L) + " C" + f(w * 0.9) + "," + f(-L * 0.86) + " " + f(w) + "," + f(-L * 0.3) + " 0,0Z";
+  }
+
+  // Parámetros de esta flor
+  var TOTAL = 14;
+  var hue = rnd(42, 52);
+  var lean = rnd(-34, 34);
+  var hx = 200 + lean, hy = rnd(205, 235);
+  var a = rnd(-45, 45), c = rnd(-45, 45);
+  var L = rnd(92, 108), w = rnd(24, 32);
+  var discR = rnd(28, 34);
+
+  // Orden de aparición: salta de a 5 posiciones para que la flor crezca pareja
+  var order = [];
+  for (var i = 0; i < TOTAL; i++) order.push((i * 5) % TOTAL);
+
+  // Suelo
+  el("ellipse", { "class": "soil", cx: 200, cy: 592, rx: 120, ry: 12 }, svg);
+
+  // Tallo
+  var p0 = [200, 590], p1 = [200 + a, 500], p2 = [hx + c, 380], p3 = [hx, hy];
+  function bez(t) {
+    var u = 1 - t;
+    return [
+      u*u*u*p0[0] + 3*u*u*t*p1[0] + 3*u*t*t*p2[0] + t*t*t*p3[0],
+      u*u*u*p0[1] + 3*u*u*t*p1[1] + 3*u*t*t*p2[1] + t*t*t*p3[1]
+    ];
+  }
+  el("path", { "class": "stem", pathLength: 1, d: "M" + p0 + " C" + p1 + " " + p2 + " " + p3 }, svg);
+
+  // Hojas
+  var side = Math.random() < 0.5 ? 1 : -1;
+  [0.26, 0.5].forEach(function (t, i) {
+    var pt = bez(t), s = i === 0 ? side : -side, size = rnd(0.9, 1.3);
+    var g = el("g", {
+      transform: "translate(" + f(pt[0]) + "," + f(pt[1]) + ") scale(" + s + ",1) rotate(" + f(rnd(-42, -22)) + ") scale(" + f(size) + ")"
+    }, svg);
+    var wrap = el("g", { "class": "leaf-wrap pop", style: "animation-delay:" + (0.55 + i * 0.2) + "s" }, g);
+    el("path", { "class": "leaf", d: "M0,0 C20,-26 72,-32 104,-8 C72,16 26,16 0,0Z" }, wrap);
+    el("path", { "class": "vein", d: "M4,0 C36,-4 68,-8 96,-8" }, wrap);
+  });
+
+  // Cabeza: capa trasera, capa delantera y centro (los pétalos quedan debajo del centro)
+  var head = el("g", { transform: "translate(" + f(hx) + "," + f(hy) + ")" }, svg);
+  var back = el("g", {}, head);
+  var front = el("g", {}, head);
+
+  var disc = el("g", { "class": "disc pop", style: "animation-delay:1s" }, head);
+  el("circle", { r: f(discR + 4), fill: "hsl(" + f(hue - 12) + ",90%,40%)" }, disc);
+  el("circle", { r: f(discR), fill: "#5a3510" }, disc);
+  var golden = Math.PI * (3 - Math.sqrt(5));
+  var seeds = Math.round(discR * 2.6);
+  for (var k = 1; k <= seeds; k++) {
+    var r = discR * 0.95 * Math.sqrt(k / seeds), th = k * golden;
+    el("circle", {
+      cx: f(r * Math.cos(th)), cy: f(r * Math.sin(th)),
+      r: f(1.2 + 1.6 * (k / seeds)),
+      fill: k % 3 === 0 ? "#c98a2b" : "#8a5a1c"
+    }, disc);
+  }
+
+  // Un pétalo por clic
+  var count = 0;
+  function agregarPetalo() {
+    if (count >= TOTAL) return;
+    var slot = order[count];
+    var ang = slot * (360 / TOTAL) + rnd(-3, 3);
+    var detras = slot % 2 === 1;
+    var g = el("g", { transform: "rotate(" + f(ang) + ")" }, detras ? back : front);
+    if (detras) {
+      el("path", {
+        "class": "petal pop", d: petalPath(L * rnd(1.06, 1.16), w * 1.05),
+        fill: "hsl(" + f(hue - 3) + ",96%,47%)"
+      }, g);
+    } else {
+      var Lf = L * rnd(0.94, 1.04);
+      var pet = el("g", { "class": "petal pop" }, g);
+      el("path", { d: petalPath(Lf, w), fill: "hsl(" + f(hue + 2) + ",100%,58%)" }, pet);
+      el("path", {
+        d: "M0,-" + f(discR * 0.7) + " L0,-" + f(Lf * 0.82),
+        stroke: "hsl(" + f(hue - 4) + ",90%,44%)", "stroke-width": 1.3,
+        "stroke-linecap": "round", fill: "none", opacity: 0.5
+      }, pet);
+    }
+    count++;
+    actualizarTexto();
+  }
+
+  function actualizarTexto() {
+    if (count === 0) caption.textContent = "Toca la flor para que le salga un pétalo";
+    else if (count < TOTAL) caption.textContent = count + " de " + TOTAL + " pétalos";
+    else {
+      caption.textContent = "Flor completa. Feliz día 🌼";
+      stage.setAttribute("aria-label", "La flor ya está completa");
+    }
+  }
+
+  stage.addEventListener("click", agregarPetalo);
+  actualizarTexto();
+})();
+</script>
+</body>
+</html>
